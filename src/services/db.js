@@ -147,7 +147,8 @@ class HRDatabaseService {
   constructor() {
     this.supabaseUrl = localStorage.getItem('supabase_url') || 'https://mujqmdmzloizqhglayxe.supabase.co';
     this.supabaseKey = localStorage.getItem('supabase_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11anFtZG16bG9penFoZ2xheXhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjgxNTk0OCwiZXhwIjoyMDk4MzkxOTQ4fQ.G7AmEylxPwm6TWZ3xjCcBhvhfNPYHdj0V08My0A_rEc';
-    this.useSupabase = localStorage.getItem('use_supabase') === 'true';
+    const storedUseSupabase = localStorage.getItem('use_supabase');
+    this.useSupabase = storedUseSupabase !== null ? storedUseSupabase === 'true' : true;
     this.client = null;
 
     if (this.useSupabase && this.supabaseUrl && this.supabaseKey) {
