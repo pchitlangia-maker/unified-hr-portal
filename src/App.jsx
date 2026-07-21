@@ -233,7 +233,7 @@ export default function App() {
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="logo-section">
-          <h1 className="logo-title">AVIATORS</h1>
+          <h1 className="logo-title" style={{ fontSize: '1.25rem', lineHeight: 1.2 }}>UNIFIED HR PORTAL</h1>
           <div className="logo-subtitle">Dynamic Screening Hub</div>
         </div>
 
