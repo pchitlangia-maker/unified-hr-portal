@@ -41,7 +41,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('user-mapping');
   const [simulatedUser, setSimulatedUser] = useState(SIMULATED_USERS[0]);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [dbModeName, setDbModeName] = useState('Offline Mock Storage');
+  const [dbModeName, setDbModeName] = useState('Supabase Live DB');
 
   // Load all DB data
   const loadData = async () => {
@@ -60,7 +60,7 @@ export default function App() {
       setJobs(j);
       setRubrics(rub);
       setJobRubricMappings(m);
-      setDbModeName(dbService.useSupabase ? 'Supabase Live DB' : 'Offline Mock Storage');
+      setDbModeName('Supabase Live DB');
     } catch (e) {
       console.error('Error loading data:', e);
     }

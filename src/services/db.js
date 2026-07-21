@@ -145,18 +145,15 @@ initMockDB();
 
 class HRDatabaseService {
   constructor() {
-    this.supabaseUrl = localStorage.getItem('supabase_url') || 'https://kxpddfiecemvlhxpdpzv.supabase.co';
-    this.supabaseKey = localStorage.getItem('supabase_key') || 'sb_publishable_TuFZJmSCS4K-tuXo-zfKTQ_zMmhXz8A';
-    const storedUseSupabase = localStorage.getItem('use_supabase');
-    this.useSupabase = storedUseSupabase !== null ? storedUseSupabase === 'true' : true;
+    this.supabaseUrl = 'https://kxpddfiecemvlhxpdpzv.supabase.co';
+    this.supabaseKey = 'sb_publishable_TuFZJmSCS4K-tuXo-zfKTQ_zMmhXz8A';
+    this.useSupabase = true;
     this.client = null;
 
-    if (this.useSupabase && this.supabaseUrl && this.supabaseKey) {
-      try {
-        this.client = createClient(this.supabaseUrl, this.supabaseKey);
-      } catch (err) {
-        console.error('Failed to initialize Supabase client:', err);
-      }
+    try {
+      this.client = createClient(this.supabaseUrl, this.supabaseKey);
+    } catch (err) {
+      console.error('Failed to initialize Supabase client:', err);
     }
   }
 
