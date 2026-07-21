@@ -318,12 +318,7 @@ export default function App() {
               </select>
             </div>
 
-            <button 
-              className="settings-toggle"
-              onClick={() => setIsConfigOpen(true)}
-            >
-              <Database size={16} /> Connection Settings
-            </button>
+            </div>
           </div>
         </div>
 
@@ -362,13 +357,6 @@ export default function App() {
           </RoleGuard>
         </main>
       </div>
-
-      {isConfigOpen && (
-        <ConfigModal
-          onClose={() => setIsConfigOpen(false)}
-          onSaveConfig={loadData}
-        />
-      )}
     </div>
   );
 }
