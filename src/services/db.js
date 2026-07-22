@@ -412,18 +412,26 @@ class HRDatabaseService {
   async saveJobRubricMapping(mappingData, editingId = null) {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { data: jobRec, error: jErr } = await this.client
-      .from('jobs')
-      .select('id')
-      .or(`job_id.eq.${mappingData.job_id},id.eq.${mappingData.job_id}`)
-      .single();
+    // Resolve job ID without causing PostgreSQL integer cast error if it is a string like 'JOB001'
+    let jobQuery = this.client.from('jobs').select('id');
+    const isJobIdString = typeof mappingData.job_id === 'string' && mappingData.job_id.startsWith('JOB');
+    if (isJobIdString) {
+      jobQuery = jobQuery.eq('job_id', mappingData.job_id);
+    } else {
+      jobQuery = jobQuery.eq('id', parseInt(mappingData.job_id, 10));
+    }
+    const { data: jobRec, error: jErr } = await jobQuery.maybeSingle();
     if (jErr) throw jErr;
 
-    const { data: rubRec, error: rErr } = await this.client
-      .from('rubrics')
-      .select('id')
-      .or(`rubric_id.eq.${mappingData.rubric_id},id.eq.${mappingData.rubric_id}`)
-      .single();
+    // Resolve rubric ID without causing PostgreSQL integer cast error if it is a string like 'RUB001'
+    let rubQuery = this.client.from('rubrics').select('id');
+    const isRubricIdString = typeof mappingData.rubric_id === 'string' && mappingData.rubric_id.startsWith('RUB');
+    if (isRubricIdString) {
+      rubQuery = rubQuery.eq('rubric_id', mappingData.rubric_id);
+    } else {
+      rubQuery = rubQuery.eq('id', parseInt(mappingData.rubric_id, 10));
+    }
+    const { data: rubRec, error: rErr } = await rubQuery.maybeSingle();
     if (rErr) throw rErr;
 
     if (jobRec && rubRec) {
@@ -446,6 +454,8 @@ class HRDatabaseService {
           .insert([dbPayload]);
         if (error) throw error;
       }
+    } else {
+      throw new Error(`Could not resolve job_id (${mappingData.job_id}) or rubric_id (${mappingData.rubric_id}) to database keys.`);
     }
     return true;
   }
