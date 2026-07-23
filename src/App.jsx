@@ -8,7 +8,9 @@ import {
   Link2,
   Database,
   UserCheck,
-  ToggleLeft
+  ToggleLeft,
+  Flame,
+  ClipboardList
 } from 'lucide-react';
 import dbService from './services/db';
 import UserMappingView from './components/UserMappingView';
@@ -19,13 +21,19 @@ import ProgramDrillDownView from './components/ProgramDrillDownView';
 import JobRubricsView from './components/JobRubricsView';
 import JobRubricMappingView from './components/JobRubricMappingView';
 import RoleGuard from './components/RoleGuard';
-import ConfigModal from './components/ConfigModal';
+
+// Modular Screening Imports
+import Round1ReviewDashboard from './components/r1/Round1ReviewDashboard';
+import CandidateDetailReview from './components/r1/CandidateDetailReview';
+import Round2TechnicalReview from './components/r2/Round2TechnicalReview';
+import CandidateTechnicalReview from './components/r2/CandidateTechnicalReview';
+import Round3ExecutiveReview from './components/r3/Round3ExecutiveReview';
 
 // Predefined simulator users matching the mockup data
 const SIMULATED_USERS = [
-  { email: 'amit.sharma@aviators.com', name: 'Amit Sharma (Admin)', status: 'active', roles: ['Admin', 'Recruiter'] },
+  { email: 'amit.sharma@aviators.com', name: 'Amit Sharma (Admin & Recruiter)', status: 'active', roles: ['Admin', 'Recruiter'] },
   { email: 'sara.khan@aviators.com', name: 'Sara Khan (Reviewer)', status: 'active', roles: ['Technical Reviewer'] },
-  { email: 'deepak.goel@aviators.com', name: 'Deepak Goel (Inactive)', status: 'inactive', roles: ['Executive'] },
+  { email: 'deepak.goel@aviators.com', name: 'Deepak Goel (Executive)', status: 'active', roles: ['Executive'] },
   { email: 'unassigned@aviators.com', name: 'Guest / Unmapped', status: 'active', roles: [] }
 ];
 
@@ -35,12 +43,18 @@ export default function App() {
   const [programs, setPrograms] = useState([]);
   const [programMappings, setProgramMappings] = useState([]);
   const [activeProgram, setActiveProgram] = useState(null);
+  const [selectedHeaderProgramId, setSelectedHeaderProgramId] = useState('ALL');
   const [jobs, setJobs] = useState([]);
   const [rubrics, setRubrics] = useState([]);
   const [jobRubricMappings, setJobRubricMappings] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  
+  // Screening workflow detail view selection states
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+
   const [activeTab, setActiveTab] = useState('user-mapping');
   const [simulatedUser, setSimulatedUser] = useState(SIMULATED_USERS[0]);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [activeRole, setActiveRole] = useState('Admin');
   const [dbModeName, setDbModeName] = useState('Supabase Live DB');
 
   // Load all DB data
@@ -53,6 +67,8 @@ export default function App() {
       const j = await dbService.getJobs();
       const rub = await dbService.getRubrics();
       const m = await dbService.getJobRubricMappings();
+      const c = await dbService.getCandidates();
+
       setUsers(u);
       setRoles(r);
       setPrograms(p);
@@ -60,6 +76,7 @@ export default function App() {
       setJobs(j);
       setRubrics(rub);
       setJobRubricMappings(m);
+      setCandidates(c);
       setDbModeName('Supabase Live DB');
     } catch (e) {
       console.error('Error loading data:', e);
@@ -69,6 +86,30 @@ export default function App() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Update activeRole when simulated user changes
+  useEffect(() => {
+    if (simulatedUser.roles && simulatedUser.roles.length > 0) {
+      // Pick first role as default activeRole
+      setActiveRole(simulatedUser.roles[0]);
+    } else {
+      setActiveRole('');
+    }
+  }, [simulatedUser]);
+
+  // Update default tab based on switched role
+  useEffect(() => {
+    if (activeRole === 'Admin') {
+      setActiveTab('user-mapping');
+    } else if (activeRole === 'Recruiter') {
+      setActiveTab('r1-dashboard');
+    } else if (activeRole === 'Technical Reviewer') {
+      setActiveTab('r2-dashboard');
+    } else if (activeRole === 'Executive') {
+      setActiveTab('r3-dashboard');
+    }
+    setSelectedCandidate(null);
+  }, [activeRole]);
 
   // Update simulator when users list modifies
   useEffect(() => {
@@ -166,7 +207,70 @@ export default function App() {
     await loadData();
   };
 
+  // Screening Save Handlers
+  const handleSaveCandidateR1 = async (candidateId, payload) => {
+    await dbService.saveCandidateR1(candidateId, payload);
+    setSelectedCandidate(null);
+    await loadData();
+  };
+
+  const handleSaveCandidateR2 = async (candidateId, payload) => {
+    await dbService.saveCandidateR2(candidateId, payload);
+    setSelectedCandidate(null);
+    await loadData();
+  };
+
+  const handleSaveCandidateR3 = async (candidateId, payload) => {
+    await dbService.saveCandidateR3(candidateId, payload);
+    setSelectedCandidate(null);
+    await loadData();
+  };
+
+  // Scoped Program list mapped to simulated user
+  const getUserScopedPrograms = () => {
+    if (activeRole === 'Admin') return programs;
+    
+    // Find programs mapped to simulatedUser's email in program_user_role_mapping
+    const mappedProgramNames = programMappings
+      .filter(m => m.user_email === simulatedUser.email)
+      .map(m => m.program_name);
+
+    return programs.filter(p => mappedProgramNames.includes(p.program_name));
+  };
+
+  const userScopedPrograms = getUserScopedPrograms();
+
+  // Filter candidates by header program selection
+  const getFilteredCandidates = () => {
+    let result = candidates;
+    if (selectedHeaderProgramId !== 'ALL') {
+      result = result.filter(c => String(c.program_id) === String(selectedHeaderProgramId));
+    } else {
+      // Fallback: restrict to user scoped programs if not Admin
+      const scopedIds = userScopedPrograms.map(up => up.id);
+      if (activeRole !== 'Admin') {
+        result = result.filter(c => scopedIds.includes(c.program_id));
+      }
+    }
+    return result;
+  };
+
+  const filteredCandidates = getFilteredCandidates();
+
   const renderActiveView = () => {
+    // Block render if user has no assigned roles
+    if (!simulatedUser.roles || simulatedUser.roles.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 bg-white border border-red-100 rounded-[2rem] shadow-sm text-center">
+          <div className="p-4 bg-red-50 text-red-500 rounded-full mb-4">
+            <Users size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">Access Restrained</h3>
+          <p className="text-sm text-muted-foreground">Admin hasn't mapped any role to your user ID, kindly contact the Admin.</p>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'user-mapping':
         return <UserMappingView users={users} roles={roles} onSaveUser={handleSaveUser} />;
@@ -223,6 +327,59 @@ export default function App() {
             onDeleteMapping={handleDeleteJobRubricMapping} 
           />
         );
+
+      // Round 1 Recruiter Workflow
+      case 'r1-dashboard':
+        if (selectedCandidate) {
+          return (
+            <CandidateDetailReview
+              candidate={selectedCandidate}
+              reviewers={users.filter(u => u.roles?.includes('Technical Reviewer'))}
+              onSave={handleSaveCandidateR1}
+              onCancel={() => setSelectedCandidate(null)}
+            />
+          );
+        }
+        return (
+          <Round1ReviewDashboard
+            candidates={filteredCandidates}
+            jobs={jobs}
+            onSelectCandidate={(c) => setSelectedCandidate(c)}
+          />
+        );
+
+      // Round 2 Technical Reviewer Workflow
+      case 'r2-dashboard':
+        if (selectedCandidate) {
+          return (
+            <CandidateTechnicalReview
+              candidate={selectedCandidate}
+              onSave={handleSaveCandidateR2}
+              onCancel={() => setSelectedCandidate(null)}
+            />
+          );
+        }
+        // Show candidates where R1 cleared, and assigned technical reviewer matches simulatedUser user_id
+        const simulatedUserId = users.find(u => u.email === simulatedUser.email)?.user_id;
+        const myCandidates = filteredCandidates.filter(c => 
+          c.r1_status === 'HR cleared' && c.assigned_tech_reviewer_id === simulatedUserId
+        );
+        return (
+          <Round2TechnicalReview
+            candidates={myCandidates}
+            onSelectCandidate={(c) => setSelectedCandidate(c)}
+          />
+        );
+
+      // Round 3 Executive Workflow
+      case 'r3-dashboard':
+        return (
+          <Round3ExecutiveReview
+            candidates={filteredCandidates}
+            onSaveVerdict={handleSaveCandidateR3}
+          />
+        );
+
       default:
         return <UserMappingView users={users} roles={roles} onSaveUser={handleSaveUser} />;
     }
@@ -241,54 +398,95 @@ export default function App() {
 
         <nav>
           <ul className="nav-list">
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'user-mapping' ? 'active' : ''}`}
-                onClick={() => setActiveTab('user-mapping')}
-              >
-                <Users size={18} /> User Mapping
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'role-mapping' ? 'active' : ''}`}
-                onClick={() => setActiveTab('role-mapping')}
-              >
-                <ShieldCheck size={18} /> Role Mapping
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'program-management' ? 'active' : ''}`}
-                onClick={() => setActiveTab('program-management')}
-              >
-                <Layers size={18} /> Program Management
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'job-opening' ? 'active' : ''}`}
-                onClick={() => setActiveTab('job-opening')}
-              >
-                <Briefcase size={18} /> Job Opening
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'job-rubrics' ? 'active' : ''}`}
-                onClick={() => setActiveTab('job-rubrics')}
-              >
-                <Award size={18} /> Job Rubrics
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'job-rubrics-mapping' ? 'active' : ''}`}
-                onClick={() => setActiveTab('job-rubrics-mapping')}
-              >
-                <Link2 size={18} /> Job Rubrics Mapping
-              </button>
-            </li>
+            {/* Admin Side Options */}
+            {activeRole === 'Admin' && (
+              <>
+                <li className="nav-item">
+                  <button 
+                    className={`nav-link ${activeTab === 'user-mapping' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('user-mapping')}
+                  >
+                    <Users size={18} /> User Mapping
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className={`nav-link ${activeTab === 'role-mapping' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('role-mapping')}
+                  >
+                    <ShieldCheck size={18} /> Role Mapping
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className={`nav-link ${activeTab === 'program-management' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('program-management')}
+                  >
+                    <Layers size={18} /> Program Management
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className={`nav-link ${activeTab === 'job-opening' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('job-opening')}
+                  >
+                    <Briefcase size={18} /> Job Opening
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className={`nav-link ${activeTab === 'job-rubrics' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('job-rubrics')}
+                  >
+                    <Award size={18} /> Job Rubrics
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className={`nav-link ${activeTab === 'job-rubrics-mapping' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('job-rubrics-mapping')}
+                  >
+                    <Link2 size={18} /> Job Rubrics Mapping
+                  </button>
+                </li>
+              </>
+            )}
+
+            {/* Recruiter Options */}
+            {activeRole === 'Recruiter' && (
+              <li className="nav-item">
+                <button 
+                  className={`nav-link ${activeTab === 'r1-dashboard' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('r1-dashboard')}
+                >
+                  <ClipboardList size={18} /> R1: Recruiter Review
+                </button>
+              </li>
+            )}
+
+            {/* Technical Reviewer Options */}
+            {activeRole === 'Technical Reviewer' && (
+              <li className="nav-item">
+                <button 
+                  className={`nav-link ${activeTab === 'r2-dashboard' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('r2-dashboard')}
+                >
+                  <Flame size={18} /> R2: Technical Review
+                </button>
+              </li>
+            )}
+
+            {/* Executive Options */}
+            {activeRole === 'Executive' && (
+              <li className="nav-item">
+                <button 
+                  className={`nav-link ${activeTab === 'r3-dashboard' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('r3-dashboard')}
+                >
+                  <Award size={18} /> R3: Executive Verdict
+                </button>
+              </li>
+            )}
           </ul>
         </nav>
       </aside>
@@ -304,6 +502,42 @@ export default function App() {
           </div>
 
           <div className="sim-controls">
+            {/* Program Header Filter (Scoped to mapped programs of active user) */}
+            {simulatedUser.roles && simulatedUser.roles.length > 0 && (
+              <div className="sim-selector">
+                <Layers size={16} />
+                <span>Program Scope:</span>
+                <select 
+                  className="sim-select text-xs font-semibold"
+                  value={selectedHeaderProgramId}
+                  onChange={(e) => setSelectedHeaderProgramId(e.target.value)}
+                >
+                  <option value="ALL">All Programs</option>
+                  {userScopedPrograms.map(p => (
+                    <option key={p.id} value={p.id}>{p.program_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Dynamic Role Switcher (Visible if user has more than 1 role) */}
+            {simulatedUser.roles && simulatedUser.roles.length > 1 && (
+              <div className="sim-selector">
+                <ShieldCheck size={16} />
+                <span>Active Role Switcher:</span>
+                <select 
+                  className="sim-select text-xs font-semibold"
+                  value={activeRole}
+                  onChange={(e) => setActiveRole(e.target.value)}
+                >
+                  {simulatedUser.roles.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Simulated User Login Switcher */}
             <div className="sim-selector">
               <UserCheck size={16} />
               <span>Simulate User Login:</span>
@@ -329,6 +563,9 @@ export default function App() {
             {activeTab === 'job-opening' && 'Job Opening'}
             {activeTab === 'job-rubrics' && 'Job Rubrics'}
             {activeTab === 'job-rubrics-mapping' && 'Job Rubrics Mapping'}
+            {activeTab === 'r1-dashboard' && 'R1 Recruiter Screening Queue'}
+            {activeTab === 'r2-dashboard' && 'R2 Technical Vetting Queue'}
+            {activeTab === 'r3-dashboard' && 'R3 Executive Decisions Worksheet'}
           </h2>
 
           <div className="user-badge">

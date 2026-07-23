@@ -469,6 +469,85 @@ class HRDatabaseService {
     if (error) throw error;
     return true;
   }
+
+  // Candidate Screening Helpers
+  async getCandidates() {
+    if (!this.client) throw new Error('Supabase client not initialized');
+
+    const { data, error } = await this.client
+      .from('candidates')
+      .select('*, programs(id, program_name), jobs(id, job_id, title), users!candidates_assigned_tech_reviewer_id_fkey(user_id, email)')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data.map(c => ({
+      ...c,
+      program_name: c.programs?.program_name,
+      job_title: c.jobs?.title,
+      job_code: c.jobs?.job_id,
+      assigned_reviewer_email: c.users?.email
+    }));
+  }
+
+  async saveCandidateR1(candidateId, r1Data) {
+    if (!this.client) throw new Error('Supabase client not initialized');
+
+    const { error } = await this.client
+      .from('candidates')
+      .update({
+        r1_tier: r1Data.r1_tier,
+        r1_score: Number(r1Data.r1_score || 0),
+        r1_comments: r1Data.r1_comments,
+        r1_status: r1Data.r1_status,
+        assigned_tech_reviewer_id: r1Data.assigned_tech_reviewer_id ? parseInt(r1Data.assigned_tech_reviewer_id, 10) : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', candidateId);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async saveCandidateR2(candidateId, r2Data) {
+    if (!this.client) throw new Error('Supabase client not initialized');
+
+    const { error } = await this.client
+      .from('candidates')
+      .update({
+        r2_earliest_start_date: r2Data.r2_earliest_start_date || null,
+        r2_notice_duration: r2Data.r2_notice_duration,
+        r2_comments: r2Data.r2_comments,
+        r2_demo_depth: Number(r2Data.r2_demo_depth || 0),
+        r2_complexity: Number(r2Data.r2_complexity || 0),
+        r2_tech_stack: Number(r2Data.r2_tech_stack || 0),
+        r2_business_fit: Number(r2Data.r2_business_fit || 0),
+        r2_tech_stack_desc: r2Data.r2_tech_stack_desc,
+        r2_decision: r2Data.r2_decision,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', candidateId);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async saveCandidateR3(candidateId, r3Data) {
+    if (!this.client) throw new Error('Supabase client not initialized');
+
+    const { error } = await this.client
+      .from('candidates')
+      .update({
+        r3_verdict: r3Data.r3_verdict,
+        r3_rejection_comments: r3Data.r3_rejection_comments || null,
+        r3_onboarding_guidelines: r3Data.r3_onboarding_guidelines || null,
+        r3_verdict_tier: r3Data.r3_verdict_tier || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', candidateId);
+
+    if (error) throw error;
+    return true;
+  }
 }
 
 export const dbService = new HRDatabaseService();
