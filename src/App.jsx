@@ -79,7 +79,11 @@ export default function App() {
       setCandidates(c);
       setDbModeName('Supabase Live DB');
     } catch (e) {
-      console.error('Error loading data:', e);
+      console.error('Error loading data in App.jsx:', e);
+      if (e && typeof e === 'object') {
+        console.error('Detailed Error Keys:', Object.keys(e));
+        console.error('Detailed Error Msg:', e.message || JSON.stringify(e));
+      }
     }
   };
 
@@ -240,17 +244,10 @@ export default function App() {
 
   const userScopedPrograms = getUserScopedPrograms();
 
-  // Filter candidates by header program selection
   const getFilteredCandidates = () => {
     let result = candidates;
     if (selectedHeaderProgramId !== 'ALL') {
       result = result.filter(c => String(c.program_id) === String(selectedHeaderProgramId));
-    } else {
-      // Fallback: restrict to user scoped programs if not Admin
-      const scopedIds = userScopedPrograms.map(up => up.id);
-      if (activeRole !== 'Admin') {
-        result = result.filter(c => scopedIds.includes(c.program_id));
-      }
     }
     return result;
   };
@@ -565,7 +562,7 @@ export default function App() {
             {activeTab === 'job-rubrics-mapping' && 'Job Rubrics Mapping'}
             {activeTab === 'r1-dashboard' && 'R1 Recruiter Screening Queue'}
             {activeTab === 'r2-dashboard' && 'R2 Technical Vetting Queue'}
-            {activeTab === 'r3-dashboard' && 'R3 Executive Decisions Worksheet'}
+            {activeTab === 'r3-dashboard' && 'R3 Executive Master Control Dashboard'}
           </h2>
 
           <div className="user-badge">

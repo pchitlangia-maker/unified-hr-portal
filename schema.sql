@@ -197,3 +197,58 @@ CREATE POLICY "Public full access to program_user_role_mapping" ON program_user_
 CREATE POLICY "Public full access to jobs" ON jobs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public full access to rubrics" ON rubrics FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public full access to job_rubric_mapping" ON job_rubric_mapping FOR ALL USING (true) WITH CHECK (true);
+
+
+-- --------------------------------------------------------
+-- 6. CANDIDATES TABLE (Round 1, Round 2, Round 3 Screening Flow)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS candidates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    ug_university VARCHAR(255),
+    resume_url TEXT,
+    github_url TEXT,
+    linkedin_url TEXT,
+    demo_url TEXT,
+    program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+    job_id INT REFERENCES jobs(id) ON DELETE SET NULL,
+    
+    -- Round 1 Recruiter Screening columns
+    r1_tier VARCHAR(20) DEFAULT 'N/A',
+    r1_score NUMERIC DEFAULT 0,
+    r1_comments TEXT,
+    r1_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Access requested', 'HR cleared', 'Rejected'
+    assigned_tech_reviewer_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+    
+    -- Round 2 Technical Reviewer columns
+    r2_earliest_start_date DATE,
+    r2_notice_duration VARCHAR(100),
+    r2_comments TEXT,
+    r2_demo_depth NUMERIC DEFAULT 0, -- Product depth slider
+    r2_complexity NUMERIC DEFAULT 0,  -- Complexity slider
+    r2_tech_stack NUMERIC DEFAULT 0,   -- Tech stack slider
+    r2_business_fit NUMERIC DEFAULT 0, -- Business problem slider
+    r2_tech_stack_desc TEXT,
+    r2_decision VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Yes', 'No', 'Maybe'
+    
+    -- Round 3 Executive Verdict columns
+    r3_verdict VARCHAR(50), -- 'Selected', 'Rejected', 'Maybe'
+    r3_rejection_comments TEXT,
+    r3_onboarding_guidelines TEXT,
+    r3_verdict_tier VARCHAR(50), -- 'Tier 1', 'Tier 2', 'Tier 3'
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed Initial Candidates
+INSERT INTO candidates (name, email, ug_university, resume_url, github_url, demo_url, program_id, job_id, r1_tier, r1_score, r1_status) VALUES
+('Rohan Mehta', 'rohan.mehta@gmail.com', 'IIIT Nagpur', 'https://example.com/resume.pdf', 'https://github.com/rohanmehta', 'https://rohan-demo.vercel.app', 1, 1, 'Tier 1', 24, 'Pending'),
+('Neha Sharma', 'neha.sharma@gmail.com', 'BITS Pilani', 'https://example.com/resume2.pdf', 'https://github.com/nehasharma', 'https://neha-demo.vercel.app', 1, 1, 'Tier 1+', 28, 'HR cleared'),
+('Amit Patel', 'amit.patel@gmail.com', 'VIT Vellore', 'https://example.com/resume3.pdf', 'https://github.com/amitpatel', NULL, 1, 2, 'Tier 2', 18, 'Pending');
+
+-- Enable RLS and Policies for Candidates
+ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public full access to candidates" ON candidates FOR ALL USING (true) WITH CHECK (true);
+

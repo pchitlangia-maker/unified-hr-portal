@@ -639,3 +639,369 @@ body {
   font-size: 0.9rem;
   color: var(--color-text-main);
 }
+/* ======================================================== */
+/*   EXECUTIVE MASTER PORTAL ADDITIONS                      */
+/* ======================================================== */
+.exec-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.exec-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.exec-metric-card {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  border-top: 4px solid var(--color-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.exec-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.exec-metric-card.total { border-top-color: #3B82F6; }
+.exec-metric-card.duplicate { border-top-color: #64748B; }
+.exec-metric-card.unique { border-top-color: #6366F1; }
+.exec-metric-card.reviewed { border-top-color: #10B981; }
+.exec-metric-card.pending { border-top-color: #F59E0B; }
+
+.exec-metric-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.exec-metric-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin-top: 0.5rem;
+}
+
+.exec-card {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+
+.exec-card-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-main);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.exec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.exec-table th {
+  background-color: var(--color-bg-light);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.exec-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-main);
+  vertical-align: middle;
+}
+
+.exec-table tr:hover td {
+  background-color: var(--color-bg-light);
+}
+
+.exec-unis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.exec-uni-card {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.exec-uni-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.exec-uni-header {
+  padding: 1rem 1.25rem;
+  background-color: var(--color-bg-light);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.exec-uni-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.exec-uni-icon-box {
+  padding: 0.5rem;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exec-uni-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.exec-uni-subtitle {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.exec-uni-badge {
+  padding: 0.2rem 0.6rem;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 750;
+  font-family: monospace;
+}
+
+.exec-uni-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.exec-uni-title-small {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.exec-uni-tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.exec-uni-tier-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.exec-uni-tier-pill.t1p { background-color: #FAF5FF; color: #7E22CE; border-color: #F3E8FF; }
+.exec-uni-tier-pill.t1 { background-color: #EFF6FF; color: #1D4ED8; border-color: #DBEAFE; }
+.exec-uni-tier-pill.t2p { background-color: #ECFDF5; color: #047857; border-color: #D1FAE5; }
+.exec-uni-tier-pill.t2 { background-color: #FFFBEB; color: #B45309; border-color: #FEF3C7; }
+.exec-uni-tier-pill.t3 { background-color: #FFF7ED; color: #C2410C; border-color: #FFEDD5; }
+.exec-uni-tier-pill.t4 { background-color: #F8FAFC; color: #475569; border-color: #F1F5F9; }
+.exec-uni-tier-pill.na { background-color: #F9FAFB; color: #6B7280; border-color: #F3F4F6; }
+
+.exec-uni-view-btn {
+  width: 100%;
+  padding: 0.6rem;
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.exec-uni-view-btn:hover {
+  background-color: var(--color-primary-light);
+}
+
+.exec-btn-outline {
+  padding: 0.5rem 1rem;
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.exec-btn-outline:hover {
+  background-color: var(--color-primary-light);
+}
+
+.exec-btn-primary {
+  padding: 0.5rem 1rem;
+  background-color: var(--color-primary);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.exec-btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.exec-pill {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.exec-pill.yes { background-color: #ECFDF5; color: #047857; }
+.exec-pill.maybe { background-color: #FFFBEB; color: #B45309; }
+.exec-pill.no { background-color: #FEF2F2; color: #B91C1C; }
+.exec-pill.pending { background-color: #F8FAFC; color: #475569; }
+
+.exec-tab-button-group {
+  display: flex;
+  gap: 0.5rem;
+  background-color: var(--color-bg-light);
+  padding: 0.35rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  width: fit-content;
+}
+
+.exec-tab-button {
+  padding: 0.4rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.exec-tab-button.active {
+  background-color: #FFFFFF;
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.exec-university-table-header {
+  background-color: #1B365D !important;
+  color: #FFFFFF !important;
+}
+
+.exec-search-wrapper {
+  position: relative;
+  max-width: 400px;
+}
+
+.exec-search-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem 0.6rem 2.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 0.8rem;
+}
+
+.exec-search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+/* ======================================================== */
+/*   EXECUTIVE NAV SUBTABS - MONDEE MAROON BRAND            */
+/* ======================================================== */
+.exec-nav-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  width: 100%;
+}
+
+.exec-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 9999px; /* Pill styled shape */
+  border: 1.5px solid #800020; /* Mondee Maroon */
+  color: #800020;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.exec-nav-tab:hover {
+  background-color: rgba(128, 0, 32, 0.05);
+}
+
+.exec-nav-tab.active {
+  background-color: #800020;
+  color: #FFFFFF;
+  border-color: #800020;
+  box-shadow: 0 4px 12px rgba(128, 0, 32, 0.25);
+}

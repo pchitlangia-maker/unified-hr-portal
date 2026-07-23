@@ -200,18 +200,41 @@ class HRDatabaseService {
   async getProgramUserMappings(programName = null) {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { data: rawMappings, error: mErr } = await this.client
-      .from('program_user_role_mapping')
-      .select('id, programs(program_name), users(email), roles(role)');
-    if (mErr) throw mErr;
+    // Fetch mappings, programs, users, and roles in parallel to avoid strict relation schema errors
+    const [mapRes, progRes, usersRes, rolesRes] = await Promise.all([
+      this.client.from('program_user_role_mapping').select('*'),
+      this.client.from('programs').select('*'),
+      this.client.from('users').select('*'),
+      this.client.from('roles').select('*')
+    ]);
 
-    const formatted = rawMappings.map(m => ({
-      id: m.id,
-      program_name: m.programs?.program_name,
-      user_email: m.users?.email,
-      mapped_role: m.roles?.role,
-      status: 'Active'
-    }));
+    if (mapRes.error) throw mapRes.error;
+    if (progRes.error) throw progRes.error;
+    if (usersRes.error) throw usersRes.error;
+    if (rolesRes.error) throw rolesRes.error;
+
+    const progMap = {};
+    progRes.data.forEach(p => { progMap[p.id] = p; });
+
+    const usersMap = {};
+    usersRes.data.forEach(u => { usersMap[u.user_id] = u; });
+
+    const rolesMap = {};
+    rolesRes.data.forEach(r => { rolesMap[r.role_id] = r; });
+
+    const formatted = mapRes.data.map(m => {
+      const prog = progMap[m.program_id] || {};
+      const usr = usersMap[m.user_id] || {};
+      const role = rolesMap[m.role_id] || {};
+
+      return {
+        id: m.id,
+        program_name: prog.program_name,
+        user_email: usr.email,
+        mapped_role: role.role,
+        status: 'Active'
+      };
+    });
 
     return programName ? formatted.filter(m => m.program_name === programName) : formatted;
   }
@@ -392,21 +415,37 @@ class HRDatabaseService {
   async getJobRubricMappings() {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { data: rawMappings, error: mErr } = await this.client
-      .from('job_rubric_mapping')
-      .select('id, mapping_id, status, jobs(job_id, title), rubrics(rubric_id, rubric_name)')
-      .order('created_at', { ascending: false });
-    if (mErr) throw mErr;
+    // Fetch mappings, jobs, and rubrics in parallel to avoid strict relation schema caching errors
+    const [mapRes, jobsRes, rubRes] = await Promise.all([
+      this.client.from('job_rubric_mapping').select('*'),
+      this.client.from('jobs').select('*'),
+      this.client.from('rubrics').select('*')
+    ]);
 
-    return rawMappings.map(m => ({
-      id: m.id,
-      mapping_id: m.mapping_id,
-      job_id: m.jobs?.job_id,
-      job_title: m.jobs?.title,
-      rubric_id: m.rubrics?.rubric_id,
-      rubric_title: m.rubrics?.rubric_name,
-      status: m.status
-    }));
+    if (mapRes.error) throw mapRes.error;
+    if (jobsRes.error) throw jobsRes.error;
+    if (rubRes.error) throw rubRes.error;
+
+    const jobsMap = {};
+    jobsRes.data.forEach(j => { jobsMap[j.id] = j; });
+
+    const rubMap = {};
+    rubRes.data.forEach(r => { rubMap[r.id] = r; });
+
+    return mapRes.data.map(m => {
+      const job = jobsMap[m.job_id] || {};
+      const rubric = rubMap[m.rubric_id] || {};
+
+      return {
+        id: m.id,
+        mapping_id: m.mapping_id,
+        job_id: job.job_id,
+        job_title: job.title,
+        rubric_id: rubric.rubric_id,
+        rubric_title: rubric.rubric_name,
+        status: m.status
+      };
+    });
   }
 
   async saveJobRubricMapping(mappingData, editingId = null) {
@@ -470,82 +509,229 @@ class HRDatabaseService {
     return true;
   }
 
-  // Candidate Screening Helpers
+  // Candidate Screening Helpers (Using parallel client-side mapped joins to avoid strict relationship constraints)
   async getCandidates() {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { data, error } = await this.client
+    // 1. Fetch raw candidate submission profiles
+    const { data: candidatesData, error: cErr } = await this.client
       .from('candidates')
-      .select('*, programs(id, program_name), jobs(id, job_id, title), users!candidates_assigned_tech_reviewer_id_fkey(user_id, email)')
+      .select('*')
       .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data.map(c => ({
-      ...c,
-      program_name: c.programs?.program_name,
-      job_title: c.jobs?.title,
-      job_code: c.jobs?.job_id,
-      assigned_reviewer_email: c.users?.email
-    }));
+    if (cErr) throw cErr;
+
+    if (!candidatesData || candidatesData.length === 0) return [];
+
+    // 2. Fetch all review rounds and mappings in parallel
+    const [r1Res, r2Res, r3Res, jobsRes, usersRes] = await Promise.all([
+      this.client.from('r1_reviews').select('*'),
+      this.client.from('r2_reviews').select('*'),
+      this.client.from('r3_reviews').select('*'),
+      this.client.from('jobs').select('*'),
+      this.client.from('users').select('*')
+    ]);
+
+    if (r1Res.error) throw r1Res.error;
+    if (r2Res.error) throw r2Res.error;
+    if (r3Res.error) throw r3Res.error;
+    if (jobsRes.error) throw jobsRes.error;
+    if (usersRes.error) throw usersRes.error;
+
+    // Create maps for efficient O(1) matching
+    const r1Map = {};
+    r1Res.data.forEach(r => { r1Map[r.candidate_id] = r; });
+
+    const r2Map = {};
+    r2Res.data.forEach(r => { r2Map[r.r1_review_id] = r; });
+
+    const r3Map = {};
+    r3Res.data.forEach(r => { r3Map[r.r1_review_id] = r; });
+
+    const jobsMap = {};
+    jobsRes.data.forEach(j => { jobsMap[j.id] = j; });
+
+    const usersMap = {};
+    usersRes.data.forEach(u => { usersMap[u.user_id] = u; });
+
+    // Join and build candidate view objects
+    return candidatesData.map(c => {
+      const r1 = r1Map[c.candidate_id] || {};
+      const r2 = r2Map[r1.id] || {};
+      const r3 = r3Map[r1.id] || {};
+      const job = jobsMap[r1.job_id] || {};
+      const techReviewer = usersMap[r1.assigned_tech_reviewer_id] || {};
+
+      return {
+        id: c.candidate_id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        location: c.location,
+        education: c.education,
+        college: c.college,
+        resume_url: c.resume_url,
+        github_url: c.github_url,
+        linkedin_url: c.linkedin_url,
+        demo_url: c.demo_url,
+        demo_category: c.demo_category,
+        demo_summary: c.demo_summary,
+        program_id: job.program_id,
+        job_id: r1.job_id,
+        job_title: job.title,
+        job_code: job.job_id,
+        
+        // R1 Fields
+        r1_review_id: r1.id,
+        r1_tier: r1.tier || 'N/A',
+        r1_score: Number(r1.score || 0),
+        r1_comments: r1.hr_comments,
+        r1_status: r1.status || 'Pending',
+        assigned_tech_reviewer_id: r1.assigned_tech_reviewer_id,
+        assigned_reviewer_email: techReviewer.email,
+
+        // R2 Fields
+        r2_earliest_start_date: r2.earliest_start_date || '',
+        r2_notice_duration: r2.notice_duration || '',
+        r2_comments: r2.comments || '',
+        r2_demo_depth: r2.demo_depth || 0,
+        r2_complexity: r2.complexity || 0,
+        r2_tech_stack: r2.tech_stack || 0,
+        r2_business_fit: r2.business_fit || 0,
+        r2_decision: r2.decision || 'Pending',
+
+        // R3 Fields
+        r3_verdict: r3.verdict || '',
+        r3_rejection_comments: r3.rejection_comments || '',
+        r3_onboarding_guidelines: r3.onboarding_guidelines || '',
+        r3_verdict_tier: r3.verdict_tier || ''
+      };
+    });
   }
 
   async saveCandidateR1(candidateId, r1Data) {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { error } = await this.client
-      .from('candidates')
-      .update({
-        r1_tier: r1Data.r1_tier,
-        r1_score: Number(r1Data.r1_score || 0),
-        r1_comments: r1Data.r1_comments,
-        r1_status: r1Data.r1_status,
-        assigned_tech_reviewer_id: r1Data.assigned_tech_reviewer_id ? parseInt(r1Data.assigned_tech_reviewer_id, 10) : null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', candidateId);
+    // First check if r1_review record exists for this candidate
+    const { data: existing, error: getErr } = await this.client
+      .from('r1_reviews')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .maybeSingle();
+    
+    if (getErr) throw getErr;
 
-    if (error) throw error;
+    const payload = {
+      candidate_id: candidateId,
+      score: Number(r1Data.r1_score || 0),
+      tier: r1Data.r1_tier,
+      hr_comments: r1Data.r1_comments,
+      status: r1Data.r1_status,
+      assigned_tech_reviewer_id: r1Data.assigned_tech_reviewer_id ? parseInt(r1Data.assigned_tech_reviewer_id, 10) : null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existing) {
+      const { error } = await this.client
+        .from('r1_reviews')
+        .update(payload)
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await this.client
+        .from('r1_reviews')
+        .insert([payload]);
+      if (error) throw error;
+    }
     return true;
   }
 
   async saveCandidateR2(candidateId, r2Data) {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { error } = await this.client
-      .from('candidates')
-      .update({
-        r2_earliest_start_date: r2Data.r2_earliest_start_date || null,
-        r2_notice_duration: r2Data.r2_notice_duration,
-        r2_comments: r2Data.r2_comments,
-        r2_demo_depth: Number(r2Data.r2_demo_depth || 0),
-        r2_complexity: Number(r2Data.r2_complexity || 0),
-        r2_tech_stack: Number(r2Data.r2_tech_stack || 0),
-        r2_business_fit: Number(r2Data.r2_business_fit || 0),
-        r2_tech_stack_desc: r2Data.r2_tech_stack_desc,
-        r2_decision: r2Data.r2_decision,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', candidateId);
+    // Resolve R1 Review ID
+    const { data: r1, error: r1Err } = await this.client
+      .from('r1_reviews')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .single();
+    if (r1Err) throw r1Err;
 
-    if (error) throw error;
+    // Check if r2_reviews record exists
+    const { data: existingR2, error: r2FindErr } = await this.client
+      .from('r2_reviews')
+      .select('id')
+      .eq('r1_review_id', r1.id)
+      .maybeSingle();
+    if (r2FindErr) throw r2FindErr;
+
+    const payload = {
+      r1_review_id: r1.id,
+      earliest_start_date: r2Data.r2_earliest_start_date || null,
+      notice_duration: r2Data.r2_notice_duration,
+      comments: r2Data.r2_comments,
+      demo_depth: Number(r2Data.r2_demo_depth || 0),
+      complexity: Number(r2Data.r2_complexity || 0),
+      tech_stack: Number(r2Data.r2_tech_stack || 0),
+      business_fit: Number(r2Data.r2_business_fit || 0),
+      decision: r2Data.r2_decision,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingR2) {
+      const { error } = await this.client
+        .from('r2_reviews')
+        .update(payload)
+        .eq('id', existingR2.id);
+      if (error) throw error;
+    } else {
+      const { error } = await this.client
+        .from('r2_reviews')
+        .insert([payload]);
+      if (error) throw error;
+    }
     return true;
   }
 
   async saveCandidateR3(candidateId, r3Data) {
     if (!this.client) throw new Error('Supabase client not initialized');
 
-    const { error } = await this.client
-      .from('candidates')
-      .update({
-        r3_verdict: r3Data.r3_verdict,
-        r3_rejection_comments: r3Data.r3_rejection_comments || null,
-        r3_onboarding_guidelines: r3Data.r3_onboarding_guidelines || null,
-        r3_verdict_tier: r3Data.r3_verdict_tier || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', candidateId);
+    // Resolve R1 Review ID
+    const { data: r1, error: r1Err } = await this.client
+      .from('r1_reviews')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .single();
+    if (r1Err) throw r1Err;
 
-    if (error) throw error;
+    // Check if r3_reviews record exists
+    const { data: existingR3, error: r3FindErr } = await this.client
+      .from('r3_reviews')
+      .select('id')
+      .eq('r1_review_id', r1.id)
+      .maybeSingle();
+    if (r3FindErr) throw r3FindErr;
+
+    const payload = {
+      r1_review_id: r1.id,
+      verdict: r3Data.r3_verdict,
+      rejection_comments: r3Data.r3_rejection_comments || null,
+      onboarding_guidelines: r3Data.r3_onboarding_guidelines || null,
+      verdict_tier: r3Data.r3_verdict_tier || null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingR3) {
+      const { error } = await this.client
+        .from('r3_reviews')
+        .update(payload)
+        .eq('id', existingR3.id);
+      if (error) throw error;
+    } else {
+      const { error } = await this.client
+        .from('r3_reviews')
+        .insert([payload]);
+      if (error) throw error;
+    }
     return true;
   }
 }
